@@ -53,16 +53,33 @@ class ComplexDeformableConv2d(nn.Module):
                                           stride=self.stride))
         output = torch.view_as_complex(torch.stack([real, imag],-1))
         return output
+
+
+class ComplexDeformableConvTranspose2d(nn.Module):
+    ''' [nn.ConvTranspose2d] 2D ConvTranpose + 2D Conv for Complex Numbers '''
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True):
+        super(ComplexDeformableConvTranspose2d, self).__init__()
+        self.upsample    = ComplexConvTranspose2d(in_channels,  in_channels, kernel_size, stride, padding, dilation, bias=bias, groups=1)
+        self.deform_conv = ComplexDeformableConv2d(in_channels, out_channels,(3,3), (1,1), (1,1), (1,1), groups=1, bias=True)
+        
+
+    def forward(self, input):
+        output = self.deform_conv(self.upsample(input))
+        return output
         
 
 
 if __name__=='__main__':
-    cplxmix     = torch.view_as_complex(torch.randn(10,64,300,257,2)).to('cuda')
-    cplxmodel   = ComplexDeformableConv2d(64, 256, (3,3), 1, 1).to('cuda')
-    cplxmix_out = cplxmodel(cplxmix)
+    cplxmix      = torch.view_as_complex(torch.randn(10,1,300,65,2)).to('cuda')
+    cplxmodel1   = ComplexDeformableConv2d(1, 128, (3,3), (1,2), (1,1)).to('cuda')
+    cplxmix_out1 = cplxmodel1(cplxmix)
+    cplxmodel2   = ComplexDeformableConvTranspose2d(128, 1, (3,3), (1,2), (1,1)).to('cuda')
+    cplxmix_out2 = cplxmodel2(cplxmix_out1)
     print('\n\n--------------------------------- Script Inputs and Outputs :: Summary')
-    print('Model params (M) : ', param(cplxmodel), 'M   ---> Complex Version')
-    print('Input Mix audio  : ', cplxmix.real.shape, cplxmix.imag.shape)
-    print('Deformable Out   : ', cplxmix_out.real.shape, cplxmix_out.imag.shape)
+    print('Model params (M)  : ', param(cplxmodel1), 'M   ---> Complex Version')
+    print('Input Mix audio   : ', cplxmix.real.shape, cplxmix.imag.shape)
+    print('Deformable Out    : ', cplxmix_out1.real.shape, cplxmix_out1.imag.shape)
+    print('Model params (M)  : ', param(cplxmodel2), 'M')
+    print('Tr.Deformable Out : ', cplxmix_out2.real.shape, cplxmix_out2.imag.shape)
     print('--------------------------------------------------------------------------\n')
     print('Done!')

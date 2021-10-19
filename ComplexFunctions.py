@@ -85,6 +85,20 @@ class MagConv2d(nn.Module):
         out = self.mag_conv(x.abs())
         return out
 
+class ComplexUpSample(nn.Module):
+    ''' [nn.Upsample] Upsample for Complex Numbers '''
+    def __init__(self, scale_factor=2):
+        super(ComplexUpSample, self).__init__()
+        self.mag_upsample   = nn.Upsample(scale_factor=scale_factor, mode='bicubic',  align_corners=False)
+        self.phase_upsample = nn.Upsample(scale_factor=scale_factor, mode='bilinear', align_corners=True)
+        
+    def forward(self, x):
+        x.imag = x.imag + 1e-10
+        mag, phase = self.mag_upsample(x.abs()), self.phase_upsample(x.angle())
+        real, imag = mag * torch.cos(phase), mag * torch.sin(phase)
+        out  = torch.view_as_complex(torch.stack([real, imag], -1))
+        return out
+
 
 class ComplexConvTranspose2d(nn.Module):
     ''' [nn.Conv2d] 2D Conv for Complex Numbers '''
